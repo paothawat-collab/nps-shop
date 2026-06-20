@@ -35,7 +35,6 @@ assets/                logo.png, logo-mark.png, icon-192.png, icon-512.png
 apple-touch-icon.png   ไอคอนติดหน้าจอ iPhone (180x180)
 favicon.png / .ico     favicon
 .nojekyll              บอก GitHub Pages ให้เสิร์ฟไฟล์ตรง ๆ
-.github/workflows/deploy.yml   ออโต้ deploy ขึ้น GitHub Pages
 ```
 
 ---
@@ -94,24 +93,23 @@ favicon.png / .ico     favicon
 
 ## Deploy ขึ้น GitHub Pages
 
-### วิธีที่ 1 — GitHub Actions (มีให้แล้ว, แนะนำ)
-1. สร้าง repo ใหม่บน GitHub แล้ว push โฟลเดอร์นี้ขึ้นไป (branch `main`)
-   ```bash
-   git init && git add . && git commit -m "NPS shop"
-   git branch -M main
-   git remote add origin https://github.com/<user>/nps-shop.git
-   git push -u origin main
-   ```
-2. ใน repo → **Settings → Pages → Build and deployment → Source = GitHub Actions**
-3. ทุกครั้งที่ push เวิร์กโฟลว์ `.github/workflows/deploy.yml` จะ deploy ให้เอง
-4. เว็บจะอยู่ที่ `https://<user>.github.io/<repo>/`
+เว็บนี้ deploy แล้วที่ 👉 **https://paothawat-collab.github.io/nps-shop/**
+(เสิร์ฟตรงจาก branch `main` — มีไฟล์ `.nojekyll` ให้แล้ว เพื่อเสิร์ฟทุกไฟล์ถูกต้อง)
 
-### วิธีที่ 2 — เสิร์ฟจาก branch ตรง ๆ
-1. **Settings → Pages → Source = Deploy from a branch** → เลือก `main` / โฟลเดอร์ `/ (root)` → Save
-2. (ไฟล์ `.nojekyll` มีให้แล้ว เพื่อให้เสิร์ฟไฟล์ทั้งหมดถูกต้อง)
+### อัปเดตเว็บครั้งต่อไป
+แก้ไฟล์ในเครื่องแล้ว push — Pages จะ build ใหม่อัตโนมัติภายใน ~1 นาที:
+```bash
+cd nps-shop
+git add -A && git commit -m "อัปเดต"
+git push
+```
+> เปลี่ยนเลข `CACHE_VERSION` ใน `sw.js` ด้วยทุกครั้งที่แก้ไฟล์ เพื่อให้เครื่องลูกค้าโหลดของใหม่ (ไม่ติดแคชเก่า)
+
+### ตั้งค่า Pages เอง (กรณีทำ repo ใหม่)
+**Settings → Pages → Source = Deploy from a branch** → เลือก `main` / โฟลเดอร์ `/ (root)` → Save → รอ ~1 นาที
 
 ### ตั้งที่อยู่เว็บร้านสำหรับ QR
-เปิดเว็บที่ deploy แล้ว → เข้าโหมดเจ้าของ → **ตั้งค่า** → ช่อง "ที่อยู่เว็บร้าน (URL)" ใส่ URL จริง เช่น `https://<user>.github.io/nps-shop/` แล้วบันทึก → QR ที่พิมพ์จะลิงก์ถูกที่
+เปิดเว็บที่ deploy แล้ว → เข้าโหมดเจ้าของ → **ตั้งค่า** → ช่อง "ที่อยู่เว็บร้าน (URL)" ใส่ `https://paothawat-collab.github.io/nps-shop/` แล้วบันทึก → QR ที่พิมพ์จะลิงก์ถูกที่
 
 ---
 
