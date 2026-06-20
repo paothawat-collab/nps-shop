@@ -11,13 +11,13 @@
    ========================================================= */
 
 window.NPS_FIREBASE_CONFIG = {
-  apiKey:            "",   // TODO: กรอก apiKey
-  authDomain:        "",   // TODO: เช่น your-project.firebaseapp.com
-  projectId:         "",   // TODO: เช่น your-project-id
-  storageBucket:     "",   // TODO: เช่น your-project.appspot.com
-  messagingSenderId: "",   // TODO
-  appId:             ""    // TODO
+  apiKey:            "AIzaSyCMDKAVIqBweSlX3JEUACPSooK8c9lpkeI",
+  authDomain:        "nps-shop-27b20.firebaseapp.com",
+  projectId:         "nps-shop-27b20",
+  storageBucket:     "nps-shop-27b20.firebasestorage.app",
+  messagingSenderId: "632508860590",
+  appId:             "1:632508860590:web:a27be2cb83359c5529853f"
 };
 
 /* อีเมลเจ้าของ (ไม่บังคับ) — เติมไว้เพื่อให้ช่องอีเมลตอนล็อกอินขึ้นให้อัตโนมัติ */
-window.NPS_OWNER_EMAIL = "";
+window.NPS_OWNER_EMAIL = "paothawat@gmail.com";
