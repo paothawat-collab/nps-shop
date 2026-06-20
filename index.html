@@ -169,6 +169,38 @@
   .img-picker.has-img .img-clear{display:flex;align-items:center;justify-content:center;}
   .img-picker.has-img .ph-hint{display:none;}
 
+  /* ---------- แกลเลอรีหลายรูป (ฟอร์มเจ้าของ) ---------- */
+  .gallery-picker{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+  .gthumb,.gadd{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--card);}
+  .gthumb img{width:100%;height:100%;object-fit:cover;display:block;}
+  .gthumb .gx{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;border:none;
+    background:rgba(33,30,25,.72);color:#fff;font-size:.8rem;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .gthumb .cover-tag{position:absolute;left:0;right:0;bottom:0;background:rgba(44,92,78,.88);color:#fff;font-size:.6rem;text-align:center;padding:2px 0;}
+  .gadd{border-style:dashed;border-width:1.5px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:3px;color:var(--patina);cursor:pointer;font-size:.7rem;text-align:center;}
+  .gadd input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;}
+
+  /* ---------- ส่วนลด (ฟอร์ม) ---------- */
+  .disc-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;}
+  .seg{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card);height:48px;}
+  .seg button{border:none;background:transparent;font:inherit;font-weight:600;padding:0 18px;cursor:pointer;color:var(--muted);}
+  .seg button.on{background:var(--patina);color:#fff;}
+
+  /* ---------- ราคา/ส่วนลด (แสดงผล) ---------- */
+  .price-old{text-decoration:line-through;color:var(--muted);font-weight:500;}
+  .disc-badge{display:inline-block;background:#f6e3de;color:var(--loss);font-weight:700;font-size:.72rem;
+    padding:2px 8px;border-radius:999px;vertical-align:middle;}
+  .pcard{position:relative;}
+  .media-count{position:absolute;top:8px;right:8px;background:rgba(33,30,25,.6);color:#fff;font-size:.7rem;
+    font-weight:600;padding:2px 8px;border-radius:999px;}
+
+  /* ---------- แกลเลอรีหน้าสินค้าเดี่ยว ---------- */
+  .pv-thumbs{display:flex;gap:8px;overflow-x:auto;padding:14px 0 2px;-webkit-overflow-scrolling:touch;}
+  .pv-thumbs img{width:66px;height:66px;flex:none;object-fit:cover;border-radius:10px;border:2px solid transparent;
+    cursor:pointer;background:var(--stone-deep);}
+  .pv-thumbs img.on{border-color:var(--patina);}
+  .pv-price .price-old{font-size:1.1rem;margin-right:10px;}
+
   .live-profit{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:2px 0 16px;
     display:flex;justify-content:space-between;align-items:center;}
   .live-profit .lbl{font-size:.84rem;color:var(--muted);}
@@ -309,16 +341,9 @@
   <div class="grabber"></div>
   <h2 id="formTitle">เพิ่มสินค้า</h2>
   <div class="field">
-    <label>รูปสินค้า</label>
-    <div class="img-picker" id="imgPicker">
-      <input type="file" id="imgInput" accept="image/*" />
-      <button class="img-clear" id="imgClear" type="button">✕</button>
-      <div class="ph-hint">
-        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3.5"/></svg>
-        <div>แตะเพื่อถ่ายรูป หรือเลือกจากอัลบั้ม</div>
-      </div>
-      <img id="imgPreview" alt="" style="display:none" />
-    </div>
+    <label>รูปสินค้า (ใส่ได้หลายรูป — รูปแรกเป็นหน้าปก)</label>
+    <div class="gallery-picker" id="galleryPicker"></div>
+    <div class="hint">แตะช่อง “เพิ่มรูป” เพื่อถ่าย/เลือกได้หลายรูป (สูงสุด 8 รูป) · แตะ ✕ เพื่อลบรูป</div>
   </div>
   <div class="field">
     <label for="fName">ชื่อสินค้า</label>
@@ -330,11 +355,24 @@
       <div class="with-unit"><input type="number" id="fCost" inputmode="decimal" placeholder="0" min="0" step="any"/><span class="unit">฿</span></div>
     </div>
     <div class="field">
-      <label for="fPrice">ราคาขาย</label>
+      <label for="fPrice">ราคาเต็ม</label>
       <div class="with-unit"><input type="number" id="fPrice" inputmode="decimal" placeholder="0" min="0" step="any"/><span class="unit">฿</span></div>
     </div>
   </div>
-  <div class="live-profit"><span class="lbl">กำไรต่อชิ้น</span><span class="v num" id="liveProfit">฿0</span></div>
+  <div class="field">
+    <label for="fDiscount">ส่วนลด (ไม่บังคับ)</label>
+    <div class="disc-row">
+      <div class="with-unit"><input type="number" id="fDiscount" inputmode="decimal" placeholder="0" min="0" step="any"/><span class="unit" id="discUnit">฿</span></div>
+      <div class="seg" id="discSeg">
+        <button type="button" data-dt="baht" class="on">฿</button>
+        <button type="button" data-dt="percent">%</button>
+      </div>
+    </div>
+  </div>
+  <div class="live-profit">
+    <div><div class="lbl">ราคาขายจริง (หลังลด)</div><div class="v num" id="liveFinal" style="color:var(--patina)">฿0</div></div>
+    <div style="text-align:right"><div class="lbl">กำไรต่อชิ้น</div><div class="v num" id="liveProfit">฿0</div></div>
+  </div>
   <div class="field">
     <label for="fNote">หมายเหตุ (ลูกค้าเห็น — ไม่บังคับ)</label>
     <textarea id="fNote" placeholder="เช่น ขนาด สี วัสดุ…"></textarea>
@@ -468,13 +506,30 @@ let unsubProducts=null, unsubCosts=null;
 let firstSnap = false;           // โหมด firebase: ได้ snapshot แรกแล้วหรือยัง
 
 let ownerMode = false;
-let editingId = null, tempImage = null;
+let editingId = null, tempImages = [];
+let discountType = 'baht';
+const MAX_IMAGES = 8;
 
 /* ---------- helper ---------- */
 const $ = s => document.querySelector(s);
 const baht = n => '฿' + (Number(n)||0).toLocaleString('th-TH',{maximumFractionDigits:2});
-const profitOf = p => (Number(p.price)||0)-(Number(p.cost)||0);
-const marginOf = p => {const pr=Number(p.price)||0;return pr>0?(profitOf(p)/pr*100):0;};
+/* ---------- รูปภาพ (รองรับหลายรูป + ของเก่าที่มีรูปเดียว) ---------- */
+const imagesOf = p => (Array.isArray(p.images)&&p.images.length) ? p.images : (p.image ? [p.image] : []);
+const coverOf  = p => imagesOf(p)[0] || null;
+
+/* ---------- ราคา + ส่วนลด ---------- */
+function finalPriceOf(p){
+  const price=Number(p.price)||0, d=Number(p.discount)||0;
+  if(d<=0) return price;
+  const f = (p.discountType==='percent') ? price*(1-d/100) : price-d;
+  return Math.max(0, Math.round(f*100)/100);
+}
+const hasDiscount  = p => (Number(p.discount)||0)>0 && finalPriceOf(p) < (Number(p.price)||0);
+const discountText = p => p.discountType==='percent' ? `-${Number(p.discount)||0}%` : `ลด ${baht(p.discount)}`;
+
+/* กำไร/มาร์จิน คิดจาก "ราคาขายจริง" (หลังหักส่วนลด) */
+const profitOf = p => finalPriceOf(p)-(Number(p.cost)||0);
+const marginOf = p => {const pr=finalPriceOf(p);return pr>0?(profitOf(p)/pr*100):0;};
 const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const newId = () => 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 function hashPin(s){let h=5381;for(let i=0;i<s.length;i++)h=((h<<5)+h+s.charCodeAt(i))|0;return 'h'+h;}
@@ -506,7 +561,9 @@ async function loadCatalog(){
 /* ---------- โหมด firebase: รวมข้อมูลสาธารณะ + ต้นทุน เป็นรายการเจ้าของ ---------- */
 function rebuildFromFirebase(){
   products = [...pubMap.values()].map(p => ({
-    id:p.id, name:p.name, price:p.price, image:p.image||null, note:p.note||'',
+    id:p.id, name:p.name, price:p.price,
+    images: imagesOf(p), discount: Number(p.discount)||0, discountType: p.discountType||'baht',
+    image:p.image||null, note:p.note||'',
     createdAt:p.createdAt||0, updatedAt:p.updatedAt||0, order:p.order??0,
     cost: costMap.has(p.id) ? costMap.get(p.id) : undefined
   }));
@@ -514,13 +571,13 @@ function rebuildFromFirebase(){
 
 /* ---------- ข้อมูลที่ลูกค้าเห็น (ไม่มี cost เด็ดขาด) ---------- */
 function publicData(){
+  const pub = p => ({id:p.id,name:p.name,price:p.price,images:imagesOf(p),
+    discount:Number(p.discount)||0,discountType:p.discountType||'baht',image:coverOf(p),note:p.note});
   if(backendMode==='firebase'){
-    return [...pubMap.values()]
-      .sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
-      .map(p=>({id:p.id,name:p.name,price:p.price,image:p.image,note:p.note}));
+    return [...pubMap.values()].sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)).map(pub);
   }
   if(publicCatalog && publicCatalog.length) return publicCatalog;
-  return products.map(p=>({id:p.id,name:p.name,price:p.price,image:p.image,note:p.note}));
+  return products.map(pub);
 }
 
 /* ---------- ย่อรูป ---------- */
@@ -561,7 +618,7 @@ function renderOwner(){
     :sort==='margin'?marginOf(b)-marginOf(a)
     :(b.createdAt||0)-(a.createdAt||0));
 
-  const tc=products.reduce((s,p)=>s+(+p.cost||0),0), ts=products.reduce((s,p)=>s+(+p.price||0),0);
+  const tc=products.reduce((s,p)=>s+(+p.cost||0),0), ts=products.reduce((s,p)=>s+finalPriceOf(p),0);
   $('#sCount').textContent=products.length.toLocaleString('th-TH');
   $('#sCost').textContent=baht(tc);$('#sSell').textContent=baht(ts);$('#sProfit').textContent=baht(ts-tc);
 
@@ -570,16 +627,21 @@ function renderOwner(){
 
   main.innerHTML = list.map(p=>{
     const pf=profitOf(p),mg=marginOf(p),up=pf>=0;
-    const thumb=p.image?`<img class="thumb" src="${p.image}" alt="">`:`<div class="thumb ph">${imgIcon(24)}</div>`;
+    const imgs=imagesOf(p),cover=imgs[0];
+    const thumb=cover?`<img class="thumb" src="${cover}" alt="">`:`<div class="thumb ph">${imgIcon(24)}</div>`;
+    const sellHtml = hasDiscount(p)
+      ? `<b class="num">${baht(finalPriceOf(p))}</b><span class="price-old num" style="font-size:.8rem">${baht(p.price)}</span>`
+      : `<b class="num">${baht(p.price)}</b>`;
     return `<div class="card">${thumb}<div class="card-body">
-      <p class="name">${esc(p.name)}</p>
+      <p class="name">${esc(p.name)}${imgs.length>1?` <span class="disc-badge" style="background:var(--stone-deep);color:var(--muted)">📷 ${imgs.length}</span>`:''}</p>
       <div class="prices">
         <div class="cost">ต้นทุน<b class="num">${baht(p.cost)}</b></div>
-        <div>ราคาขาย<b class="num">${baht(p.price)}</b></div>
+        <div>ราคาขาย${sellHtml}</div>
       </div>
       <div class="profit-row">
         <span class="chip ${up?'up':'down'} num">${up?'กำไร ':'ขาดทุน '}${baht(Math.abs(pf))}</span>
         <span class="chip margin num">${mg.toFixed(1)}%</span>
+        ${hasDiscount(p)?`<span class="chip down num">${esc(discountText(p))}</span>`:''}
       </div>
       ${p.note?`<p class="note">${esc(p.note)}</p>`:''}
     </div><div class="card-actions">
@@ -601,11 +663,18 @@ function renderFront(){
     if(backendMode==='firebase' && !firstSnap){ main.innerHTML = emptyHtml('กำลังเชื่อมต่อ…','กำลังโหลดสินค้าจากระบบ'); return; }
     main.innerHTML = emptyHtml('ยังไม่มีสินค้า', backendMode==='firebase'?'เจ้าของร้านยังไม่ได้เพิ่มสินค้า':'เจ้าของร้านยังไม่ได้เพิ่ม/เผยแพร่สินค้า'); return;
   }
-  main.innerHTML = `<div class="grid">${data.map(p=>`
-    <div class="pcard" onclick="location.hash='#/p/${p.id}'">
-      ${p.image?`<img class="pimg" src="${p.image}" alt="">`:`<div class="pimg ph">${imgIcon(30)}</div>`}
-      <div class="pinfo"><p class="pname">${esc(p.name)}</p><div class="pprice num">${baht(p.price)}</div></div>
-    </div>`).join('')}</div>`;
+  main.innerHTML = `<div class="grid">${data.map(p=>{
+    const imgs=imagesOf(p),cover=imgs[0];
+    const priceHtml = hasDiscount(p)
+      ? `<div class="pprice num">${baht(finalPriceOf(p))} <span class="price-old" style="font-size:.85rem">${baht(p.price)}</span></div>`
+      : `<div class="pprice num">${baht(p.price)}</div>`;
+    return `<div class="pcard" onclick="location.hash='#/p/${p.id}'">
+      ${cover?`<img class="pimg" src="${cover}" alt="">`:`<div class="pimg ph">${imgIcon(30)}</div>`}
+      ${imgs.length>1?`<span class="media-count">📷 ${imgs.length}</span>`:''}
+      ${hasDiscount(p)?`<span class="disc-badge" style="position:absolute;top:8px;left:8px">${esc(discountText(p))}</span>`:''}
+      <div class="pinfo"><p class="pname">${esc(p.name)}</p>${priceHtml}</div>
+    </div>`;
+  }).join('')}</div>`;
 }
 
 async function renderProduct(id){
@@ -623,12 +692,25 @@ async function renderProduct(id){
       <div class="pv-body" style="padding-top:90px">${emptyHtml('ไม่พบสินค้านี้','อาจถูกลบไปแล้ว หรือยังไม่ได้เผยแพร่')}</div>`;
     return;
   }
+  const imgs = imagesOf(p);
+  window.__pvImgs = imgs;
+  const mainImg = imgs.length
+    ? `<img class="pv-img" id="pvMain" src="${imgs[0]}" alt="">`
+    : `<div class="pv-img ph">${imgIcon(44)}</div>`;
+  const thumbs = imgs.length>1
+    ? `<div class="pv-thumbs">${imgs.map((src,i)=>`<img src="${src}" class="${i===0?'on':''}" onclick="pvSwap(${i})" alt="">`).join('')}</div>`
+    : '';
+  const priceBlock = hasDiscount(p)
+    ? `<div class="pv-price num"><span class="price-old">${baht(p.price)}</span>${baht(finalPriceOf(p))}<small>ราคาขาย</small></div>
+       <div style="margin-top:6px"><span class="disc-badge">${esc(discountText(p))}</span></div>`
+    : `<div class="pv-price num">${baht(p.price)}<small>ราคาขาย</small></div>`;
   pv.innerHTML=`
     <button class="pv-back" onclick="location.hash=''">${backIcon()} หน้าร้าน</button>
-    ${p.image?`<img class="pv-img" src="${p.image}" alt="">`:`<div class="pv-img ph">${imgIcon(44)}</div>`}
+    ${mainImg}
     <div class="pv-body">
+      ${thumbs}
       <h1 class="pv-name">${esc(p.name)}</h1>
-      <div class="pv-price num">${baht(p.price)}<small>ราคาขาย</small></div>
+      ${priceBlock}
       ${p.note?`<div class="pv-note">${esc(p.note)}</div>`:''}
       <div class="pv-foot">
         <img class="pv-logo" src="assets/logo.png" alt="โลโก้ NPS เสาโรมัน" />
@@ -637,6 +719,12 @@ async function renderProduct(id){
     </div>`;
   window.scrollTo(0,0);
 }
+
+/* สลับรูปหลักในหน้าสินค้าเดี่ยว (แตะรูปย่อ) */
+window.pvSwap = i => {
+  const m=$('#pvMain'); const imgs=window.__pvImgs||[];
+  if(m && imgs[i]){ m.src=imgs[i]; document.querySelectorAll('.pv-thumbs img').forEach((t,j)=>t.classList.toggle('on',j===i)); }
+};
 
 function emptyHtml(h,s){return `<div class="empty">
   <img class="empty-logo" src="assets/logo.png" alt="โลโก้ NPS เสาโรมัน" />
@@ -648,16 +736,41 @@ function backIcon(){return `<svg width="15" height="15" viewBox="0 0 24 24" fill
 function openSheet(id){$('#scrim').classList.add('show');$('#'+id).classList.add('show');document.body.style.overflow='hidden';}
 function closeSheets(){$('#scrim').classList.remove('show');document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));document.body.style.overflow='';}
 
-function resetForm(){editingId=null;tempImage=null;$('#formTitle').textContent='เพิ่มสินค้า';
-  $('#fName').value='';$('#fCost').value='';$('#fPrice').value='';$('#fNote').value='';setPreview(null);liveProfit();}
-function setPreview(src){const pk=$('#imgPicker'),im=$('#imgPreview');
-  if(src){im.src=src;im.style.display='block';pk.classList.add('has-img');}else{im.src='';im.style.display='none';pk.classList.remove('has-img');}}
-function liveProfit(){const c=+$('#fCost').value||0,p=+$('#fPrice').value||0,pf=p-c,el=$('#liveProfit');
-  el.textContent=(pf<0?'-':'')+baht(Math.abs(pf));el.style.color=pf>=0?'var(--profit)':'var(--loss)';}
+function resetForm(){editingId=null;tempImages=[];$('#formTitle').textContent='เพิ่มสินค้า';
+  $('#fName').value='';$('#fCost').value='';$('#fPrice').value='';$('#fDiscount').value='';$('#fNote').value='';
+  setDiscountType('baht');renderGallery();liveProfit();}
 
-window.editProduct=id=>{const p=products.find(x=>x.id===id);if(!p)return;editingId=id;tempImage=p.image||null;
-  $('#formTitle').textContent='แก้ไขสินค้า';$('#fName').value=p.name;$('#fCost').value=(p.cost??'');$('#fPrice').value=p.price;$('#fNote').value=p.note||'';
-  setPreview(p.image||null);liveProfit();openSheet('sheetForm');};
+/* แกลเลอรีรูปในฟอร์ม (วาดจาก tempImages) */
+function renderGallery(){
+  const box=$('#galleryPicker');if(!box)return;
+  const tiles=tempImages.map((src,i)=>
+    `<div class="gthumb"><img src="${src}" alt=""><button type="button" class="gx" data-rm="${i}">✕</button>${i===0?'<div class="cover-tag">หน้าปก</div>':''}</div>`).join('');
+  const add=tempImages.length<MAX_IMAGES
+    ? `<label class="gadd">${imgIcon(22)}<span>เพิ่มรูป</span><input type="file" accept="image/*" multiple></label>` : '';
+  box.innerHTML=tiles+add;
+}
+
+/* สลับหน่วยส่วนลด ฿ / % */
+function setDiscountType(t){
+  discountType = t==='percent' ? 'percent' : 'baht';
+  $('#discUnit').textContent = discountType==='percent' ? '%' : '฿';
+  document.querySelectorAll('#discSeg button').forEach(b=>b.classList.toggle('on',b.dataset.dt===discountType));
+  liveProfit();
+}
+
+function liveProfit(){
+  const c=+$('#fCost').value||0, price=+$('#fPrice').value||0, d=+$('#fDiscount').value||0;
+  const final = d>0 ? Math.max(0, discountType==='percent' ? price*(1-d/100) : price-d) : price;
+  const pf=final-c;
+  $('#liveFinal').textContent=baht(final);
+  const el=$('#liveProfit'); el.textContent=(pf<0?'-':'')+baht(Math.abs(pf)); el.style.color=pf>=0?'var(--profit)':'var(--loss)';
+}
+
+window.editProduct=id=>{const p=products.find(x=>x.id===id);if(!p)return;editingId=id;
+  tempImages = imagesOf(p).slice();
+  $('#formTitle').textContent='แก้ไขสินค้า';$('#fName').value=p.name;$('#fCost').value=(p.cost??'');$('#fPrice').value=p.price;
+  $('#fDiscount').value=(Number(p.discount)||0)||'';$('#fNote').value=p.note||'';
+  setDiscountType(p.discountType||'baht');renderGallery();liveProfit();openSheet('sheetForm');};
 window.deleteProduct=async id=>{const p=products.find(x=>x.id===id);if(!p)return;
   if(!confirm(`ลบ “${p.name}” ออกจากรายการ?`))return;
   if(backendMode==='firebase'){
@@ -670,15 +783,15 @@ window.deleteProduct=async id=>{const p=products.find(x=>x.id===id);if(!p)return
 async function saveProduct(){
   const name=$('#fName').value.trim();
   if(!name){toast('กรุณากรอกชื่อสินค้า');$('#fName').focus();return;}
-  const cost=+$('#fCost').value||0,price=+$('#fPrice').value||0,note=$('#fNote').value.trim();
+  const cost=+$('#fCost').value||0,price=+$('#fPrice').value||0,discount=+$('#fDiscount').value||0,note=$('#fNote').value.trim();
+  const images=tempImages.slice();
 
   if(backendMode==='firebase'){
     if(!authedUser){toast('ต้องล็อกอินเจ้าของก่อนบันทึก');return;}
     const now=Date.now();
     const ex = editingId ? (products.find(x=>x.id===editingId)||{}) : {};
     const rec = {
-      id: editingId || newId(), name, price, note,
-      image: (tempImage!==undefined? tempImage : ex.image) ?? null,
+      id: editingId || newId(), name, price, discount, discountType, note, images,
       createdAt: ex.createdAt || now, updatedAt: now, order: ex.order ?? now
     };
     const btn=$('#btnSave'); btn.disabled=true;
@@ -692,8 +805,9 @@ async function saveProduct(){
   }
 
   // ---- โหมด local (ระบบเดิม) ----
-  if(editingId){Object.assign(products.find(x=>x.id===editingId),{name,cost,price,note,image:tempImage,updatedAt:Date.now()});toast('บันทึกการแก้ไขแล้ว');}
-  else{products.unshift({id:newId(),name,cost,price,note,image:tempImage,createdAt:Date.now(),updatedAt:Date.now()});toast('เพิ่มสินค้าแล้ว · อย่าลืม “เผยแพร่แคตตาล็อก”');}
+  const fields={name,cost,price,discount,discountType,note,images,image:images[0]||null};
+  if(editingId){Object.assign(products.find(x=>x.id===editingId),fields,{updatedAt:Date.now()});toast('บันทึกการแก้ไขแล้ว');}
+  else{products.unshift({id:newId(),...fields,createdAt:Date.now(),updatedAt:Date.now()});toast('เพิ่มสินค้าแล้ว · อย่าลืม “เผยแพร่แคตตาล็อก”');}
   saveLocal();render();closeSheets();
 }
 
@@ -706,7 +820,7 @@ function makeQr(el,text,size){
 window.showQr=id=>{
   const p=products.find(x=>x.id===id);if(!p)return;
   const link=productLink(id);
-  $('#qrName').textContent=p.name;$('#qrPrice').textContent=baht(p.price);$('#qrUrl').textContent=link;
+  $('#qrName').textContent=p.name;$('#qrPrice').textContent=baht(finalPriceOf(p));$('#qrUrl').textContent=link;
   $('#sheetQr').dataset.pid=id;
   openSheet('sheetQr');
   makeQr($('#qrCanvas'),link,180);
@@ -720,9 +834,11 @@ function printLabels(items){
     const qd=document.createElement('div');
     d.appendChild(qd);
     const nm=document.createElement('div');nm.className='lname';nm.textContent=p.name;
-    const pr=document.createElement('div');pr.className='lprice';pr.textContent=baht(p.price);
+    const pr=document.createElement('div');pr.className='lprice';pr.textContent=baht(finalPriceOf(p));
+    d.appendChild(nm);d.appendChild(pr);
+    if(hasDiscount(p)){const o=document.createElement('div');o.className='lshop';o.style.textDecoration='line-through';o.textContent='ปกติ '+baht(p.price);d.appendChild(o);}
     const sh=document.createElement('div');sh.className='lshop';sh.textContent='สแกนดูสินค้า · NPS เสาโรมัน';
-    d.appendChild(nm);d.appendChild(pr);d.appendChild(sh);grid.appendChild(d);
+    d.appendChild(sh);grid.appendChild(d);
     makeQr(qd,productLink(p.id),110);
   });
   setTimeout(()=>{window.print();},400); // รอ QR + โลโก้เรนเดอร์
@@ -825,7 +941,7 @@ function download(filename,text,type){
 }
 function exportData(){download(`nps-สำรองข้อมูล-${new Date().toISOString().slice(0,10)}.json`,JSON.stringify(products,null,2),'application/json');toast('ส่งออกไฟล์สำรองแล้ว (มีต้นทุน — เก็บเป็นความลับ)');}
 function publishCatalog(){
-  const cat=products.map(p=>({id:p.id,name:p.name,price:p.price,image:p.image,note:p.note}));
+  const cat=products.map(p=>({id:p.id,name:p.name,price:p.price,discount:Number(p.discount)||0,discountType:p.discountType||'baht',images:imagesOf(p),image:coverOf(p),note:p.note}));
   download('catalog.json',JSON.stringify(cat),'application/json');
   toast('ได้ไฟล์ catalog.json แล้ว — อัปโหลดทับในเว็บร้าน ลูกค้าถึงเห็นอัปเดต');
 }
@@ -844,8 +960,9 @@ async function migrateLocalToFirebase(){
   try{
     for(const p of local){
       const now=Date.now();
-      const rec={ id:p.id||newId(), name:p.name||'(ไม่มีชื่อ)', price:+p.price||0, note:p.note||'',
-        image:p.image||null, createdAt:p.createdAt||now, updatedAt:p.updatedAt||now, order:p.order??(p.createdAt||now) };
+      const rec={ id:p.id||newId(), name:p.name||'(ไม่มีชื่อ)', price:+p.price||0,
+        discount:+p.discount||0, discountType:p.discountType||'baht', images:imagesOf(p), note:p.note||'',
+        createdAt:p.createdAt||now, updatedAt:p.updatedAt||now, order:p.order??(p.createdAt||now) };
       await backend.saveProduct(rec, +p.cost||0);
       ok++;
     }
@@ -878,13 +995,23 @@ $('#btnSave').onclick=saveProduct;
 $('#btnLogin').onclick=doLogin;
 $('#loginPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 $('#search').oninput=render;$('#sort').onchange=render;
-$('#fCost').oninput=liveProfit;$('#fPrice').oninput=liveProfit;
+$('#fCost').oninput=liveProfit;$('#fPrice').oninput=liveProfit;$('#fDiscount').oninput=liveProfit;
 $('#scrim').onclick=closeSheets;
 document.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeSheets);
 
-$('#imgInput').onchange=async e=>{const f=e.target.files[0];if(!f)return;
-  try{setPreview('');tempImage=await compressImage(f);setPreview(tempImage);}catch(err){toast('อ่านรูปไม่สำเร็จ');}e.target.value='';};
-$('#imgClear').onclick=e=>{e.stopPropagation();tempImage=null;setPreview(null);};
+/* แกลเลอรีรูป: เพิ่ม (เลือกได้หลายไฟล์) / ลบ + สลับหน่วยส่วนลด */
+$('#galleryPicker').addEventListener('click',e=>{
+  const rm=e.target.closest('[data-rm]'); if(rm){ tempImages.splice(+rm.dataset.rm,1); renderGallery(); }
+});
+$('#galleryPicker').addEventListener('change',async e=>{
+  const inp=e.target.closest('input[type=file]'); if(!inp)return;
+  const files=[...inp.files]; inp.value='';
+  for(const f of files){
+    if(tempImages.length>=MAX_IMAGES){ toast(`ใส่รูปได้สูงสุด ${MAX_IMAGES} รูป`); break; }
+    try{ tempImages.push(await compressImage(f)); renderGallery(); }catch(err){ toast('อ่านรูปบางรูปไม่สำเร็จ'); }
+  }
+});
+$('#discSeg').addEventListener('click',e=>{const b=e.target.closest('[data-dt]'); if(b) setDiscountType(b.dataset.dt);});
 
 $('#btnExport').onclick=exportData;
 $('#btnPublish').onclick=publishCatalog;
@@ -985,8 +1112,11 @@ function registerSW(){
       async saveProduct(pub, cost){
         const batch = fs.writeBatch(db);
         batch.set(fs.doc(db,'products',pub.id), {
-          name:pub.name, price:Number(pub.price)||0, image:pub.image||null, note:pub.note||'',
-          order:pub.order??0, createdAt:pub.createdAt, updatedAt:pub.updatedAt
+          name:pub.name, price:Number(pub.price)||0,
+          images: Array.isArray(pub.images)?pub.images:[],
+          discount: Number(pub.discount)||0,
+          discountType: pub.discountType==='percent'?'percent':'baht',
+          note:pub.note||'', order:pub.order??0, createdAt:pub.createdAt, updatedAt:pub.updatedAt
         });
         batch.set(fs.doc(db,'private_costs',pub.id), { cost:Number(cost)||0 });
         await batch.commit();
