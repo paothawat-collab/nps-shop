@@ -1,0 +1,23 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // สินค้าสาธารณะ: ใครก็อ่านได้ (ลูกค้าเห็นรูป+ราคา) แต่เขียนได้เฉพาะเจ้าของ
+    match /products/{id} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == 'OWNER_UID';
+    }
+
+    // ต้นทุน: อ่าน/เขียนได้เฉพาะเจ้าของเท่านั้น — ลูกค้าอ่านไม่ได้จริง
+    match /private_costs/{id} {
+      allow read, write: if request.auth != null && request.auth.uid == 'OWNER_UID';
+    }
+  }
+}
+
+/*
+  TODO: แทนที่ 'OWNER_UID' (ทั้ง 2 จุด) ด้วย UID จริงของบัญชีเจ้าของ
+  หา UID ได้ที่: Firebase Console → Authentication → แท็บ Users → คอลัมน์ User UID
+  จากนั้นนำไฟล์นี้ไปลงที่: Firebase Console → Firestore Database → แท็บ Rules → Publish
+  (หรือใช้ Firebase CLI: firebase deploy --only firestore:rules)
+*/

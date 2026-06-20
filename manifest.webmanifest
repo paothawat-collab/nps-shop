@@ -1,0 +1,19 @@
+{
+  "name": "ร้านหนองภัยศูนย์เสาโรมัน",
+  "short_name": "NPS เสาโรมัน",
+  "description": "ระบบราคาสินค้า ร้านหนองภัยศูนย์เสาโรมัน (NPS Roman) — ดูสินค้า ราคา และสแกน QR",
+  "lang": "th",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#211e19",
+  "theme_color": "#211e19",
+  "icons": [
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
