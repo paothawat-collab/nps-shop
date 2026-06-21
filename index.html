@@ -558,6 +558,45 @@ async function loadCatalog(){
   }catch(e){ /* รันแบบ local หรือยังไม่เผยแพร่ — ใช้ข้อมูลในเครื่องแทน */ }
 }
 
+/* ---------- ⚡ ดึงสินค้าเดี่ยวผ่าน REST (สำหรับสแกน QR — เร็ว ไม่ต้องโหลด SDK/ทั้งคอลเลกชัน) ---------- */
+const singleCache = new Map();                  // กันดึงซ้ำเมื่อกลับมาหน้าเดิม
+function fbCfg(){ return window.NPS_FIREBASE_CONFIG || {}; }
+function fbReady(){ const c=fbCfg(); return !!(c.apiKey && c.projectId && c.appId && !/^(YOUR_|xxx|paste|<|TODO)/i.test(c.apiKey)); }
+/* แปลงค่าจากรูปแบบ Firestore REST → ค่า JS ปกติ */
+function fsVal(v){
+  if(v==null) return null;
+  if('stringValue' in v) return v.stringValue;
+  if('integerValue' in v) return Number(v.integerValue);
+  if('doubleValue' in v) return Number(v.doubleValue);
+  if('booleanValue' in v) return v.booleanValue;
+  if('arrayValue' in v) return (v.arrayValue.values||[]).map(fsVal);
+  if('mapValue' in v){ const o={},f=v.mapValue.fields||{}; for(const k in f)o[k]=fsVal(f[k]); return o; }
+  return null;
+}
+/* ดึงเฉพาะบางฟิลด์ของสินค้า 1 ชิ้น (ใช้ field mask ให้ตอบกลับเล็กที่สุด) */
+async function restGet(id, fields){
+  const c=fbCfg();
+  const mask = fields.map(f=>'mask.fieldPaths='+encodeURIComponent(f)).join('&');
+  const url = `https://firestore.googleapis.com/v1/projects/${c.projectId}/databases/(default)/documents/products/${encodeURIComponent(id)}?key=${c.apiKey}&${mask}`;
+  const res = await fetch(url,{cache:'no-store'});
+  if(!res.ok) return null;
+  const doc = await res.json();
+  if(!doc.fields) return {};
+  const o={}; for(const k in doc.fields) o[k]=fsVal(doc.fields[k]); return o;
+}
+
+/* เริ่มฟังสินค้าทั้งคอลเลกชันเฉพาะตอนเปิดหน้าร้าน/กริด (ไม่ทำตอนสแกน QR ดูชิ้นเดียว) */
+function ensureProductsSub(){
+  if(backendMode!=='firebase' || unsubProducts || !backend) return;
+  firstSnap=false;
+  unsubProducts = backend.subscribeProducts(arr=>{
+    firstSnap=true;
+    pubMap=new Map(arr.map(p=>[p.id,p]));
+    rebuildFromFirebase();
+    render();
+  });
+}
+
 /* ---------- โหมด firebase: รวมข้อมูลสาธารณะ + ต้นทุน เป็นรายการเจ้าของ ---------- */
 function rebuildFromFirebase(){
   products = [...pubMap.values()].map(p => ({
@@ -594,6 +633,7 @@ function render(){
   // โหมดสินค้าเดี่ยว (#/p/id) จัดการแยก
   if(location.hash.startsWith('#/p/')){ renderProduct(location.hash.slice(4)); return; }
   $('#productView').classList.add('hide'); $('#appView').classList.remove('hide');
+  ensureProductsSub(); // เริ่มโหลดสินค้าทั้งร้านเฉพาะตอนดูหน้าร้าน/กริด
 
   // สลับ UI ตามโหมด
   $('#summary').classList.toggle('hide',!ownerMode);
@@ -669,7 +709,7 @@ function renderFront(){
       ? `<div class="pprice num">${baht(finalPriceOf(p))} <span class="price-old" style="font-size:.85rem">${baht(p.price)}</span></div>`
       : `<div class="pprice num">${baht(p.price)}</div>`;
     return `<div class="pcard" onclick="location.hash='#/p/${p.id}'">
-      ${cover?`<img class="pimg" src="${cover}" alt="">`:`<div class="pimg ph">${imgIcon(30)}</div>`}
+      ${cover?`<img class="pimg" src="${cover}" alt="" loading="lazy" decoding="async">`:`<div class="pimg ph">${imgIcon(30)}</div>`}
       ${imgs.length>1?`<span class="media-count">📷 ${imgs.length}</span>`:''}
       ${hasDiscount(p)?`<span class="disc-badge" style="position:absolute;top:8px;left:8px">${esc(discountText(p))}</span>`:''}
       <div class="pinfo"><p class="pname">${esc(p.name)}</p>${priceHtml}</div>
@@ -677,28 +717,15 @@ function renderFront(){
   }).join('')}</div>`;
 }
 
-async function renderProduct(id){
-  $('#appView').classList.add('hide');
-  const pv=$('#productView'); pv.classList.remove('hide');
-  let p = publicData().find(x=>x.id===id);
-  // โหมด firebase: ถ้ายังไม่มีใน cache (เช่น สแกน QR เข้าตรง ๆ ก่อน snapshot) → ดึงเอกสารเดี่ยว
-  if(!p && backendMode==='firebase' && backend){
-    pv.innerHTML=`<button class="pv-back" onclick="location.hash=''">${backIcon()} หน้าร้าน</button>
-      <div class="pv-body" style="padding-top:90px">${emptyHtml('กำลังโหลด…','กำลังเปิดข้อมูลสินค้า')}</div>`;
-    try{ const r=await backend.getProduct(id); if(r) p={id:r.id,name:r.name,price:r.price,image:r.image,note:r.note}; }catch(e){}
-  }
-  if(!p){
-    pv.innerHTML=`<button class="pv-back" onclick="location.hash=''">${backIcon()} หน้าร้าน</button>
-      <div class="pv-body" style="padding-top:90px">${emptyHtml('ไม่พบสินค้านี้','อาจถูกลบไปแล้ว หรือยังไม่ได้เผยแพร่')}</div>`;
-    return;
-  }
+/* วาดหน้าสินค้าเดี่ยว (ใช้ซ้ำได้ — เรียกตอนได้ข้อความก่อน แล้วเรียกอีกทีตอนได้รูป) */
+function paintProduct(pv,p){
   const imgs = imagesOf(p);
   window.__pvImgs = imgs;
   const mainImg = imgs.length
-    ? `<img class="pv-img" id="pvMain" src="${imgs[0]}" alt="">`
-    : `<div class="pv-img ph">${imgIcon(44)}</div>`;
+    ? `<img class="pv-img" id="pvMain" src="${imgs[0]}" alt="" decoding="async">`
+    : `<div class="pv-img ph">${p._loadingImages?'กำลังโหลดรูป…':imgIcon(44)}</div>`;
   const thumbs = imgs.length>1
-    ? `<div class="pv-thumbs">${imgs.map((src,i)=>`<img src="${src}" class="${i===0?'on':''}" onclick="pvSwap(${i})" alt="">`).join('')}</div>`
+    ? `<div class="pv-thumbs">${imgs.map((src,i)=>`<img src="${src}" loading="lazy" decoding="async" class="${i===0?'on':''}" onclick="pvSwap(${i})" alt="">`).join('')}</div>`
     : '';
   const priceBlock = hasDiscount(p)
     ? `<div class="pv-price num"><span class="price-old">${baht(p.price)}</span>${baht(finalPriceOf(p))}<small>ราคาขาย</small></div>
@@ -717,7 +744,45 @@ async function renderProduct(id){
         ร้าน<span class="b"> หนองภัยศูนย์เสาโรมัน</span>
       </div>
     </div>`;
-  window.scrollTo(0,0);
+}
+
+async function renderProduct(id){
+  $('#appView').classList.add('hide');
+  const pv=$('#productView'); pv.classList.remove('hide');
+
+  // มีใน cache อยู่แล้ว (เคยโหลด หรือมาจาก snapshot ทั้งคอลเลกชัน) → วาดเลย
+  let p = singleCache.get(id) || publicData().find(x=>x.id===id);
+  if(p){ paintProduct(pv,p); window.scrollTo(0,0); return; }
+
+  // ⚡ ทางเร็วสำหรับ QR: ดึง "ข้อความ+ราคา" ก่อน (เล็กมาก) แสดงทันที แล้วค่อยทยอยโหลดรูป
+  if(fbReady()){
+    let meta=null;
+    try{ meta = await restGet(id, ['name','price','discount','discountType','note']); }catch(e){}
+    if(meta && meta.name!=null){
+      p = { id, name:meta.name||'', price:Number(meta.price)||0, discount:Number(meta.discount)||0,
+            discountType:meta.discountType||'baht', note:meta.note||'', images:[], _loadingImages:true };
+      paintProduct(pv,p); window.scrollTo(0,0);   // โชว์ชื่อ+ราคาทันที (รูปกำลังโหลด)
+      try{
+        const im = await restGet(id, ['images','image']);
+        const imgs = (im&&Array.isArray(im.images)&&im.images.length)?im.images:((im&&im.image)?[im.image]:[]);
+        p = {...p, images:imgs, _loadingImages:false};
+      }catch(e){ p._loadingImages=false; }
+      singleCache.set(id,p);
+      paintProduct(pv,p);                          // เติมรูปเมื่อโหลดเสร็จ
+      return;
+    }
+  }
+
+  // สำรอง: ผ่าน SDK (ถ้าโหลดแล้ว) หรือข้อมูลในเครื่อง
+  if(backendMode==='firebase' && backend){
+    try{ const r=await backend.getProduct(id);
+      if(r) p={id:r.id,name:r.name,price:r.price,images:imagesOf(r),image:coverOf(r),discount:Number(r.discount)||0,discountType:r.discountType||'baht',note:r.note};
+    }catch(e){}
+  }
+  if(p){ singleCache.set(id,p); paintProduct(pv,p); window.scrollTo(0,0); return; }
+
+  pv.innerHTML=`<button class="pv-back" onclick="location.hash=''">${backIcon()} หน้าร้าน</button>
+    <div class="pv-body" style="padding-top:90px">${emptyHtml('ไม่พบสินค้านี้','อาจถูกลบไปแล้ว หรือยังไม่ได้เผยแพร่')}</div>`;
 }
 
 /* สลับรูปหลักในหน้าสินค้าเดี่ยว (แตะรูปย่อ) */
@@ -1032,7 +1097,9 @@ $('#btnLogout').onclick=async()=>{ try{ await backend.signOut(); ownerMode=false
 window.addEventListener('hashchange',render);
 
 /* ========================= Service Worker (PWA) ========================= */
+let _swRegistered=false;
 function registerSW(){
+  if(_swRegistered) return; _swRegistered=true;
   if('serviceWorker' in navigator && location.protocol.startsWith('http')){
     window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
   }
@@ -1040,19 +1107,14 @@ function registerSW(){
 
 /* ========================= เริ่มทำงาน ========================= */
 (async function init(){
+  // ⚡ ถ้าเข้ามาด้วยลิงก์สินค้าเดี่ยว (สแกน QR) → เรนเดอร์ทันทีจาก REST ไม่รอ SDK/ทั้งคอลเลกชัน
+  if(location.hash.startsWith('#/p/')){ render(); registerSW(); }
+
   backend = await backendReady;
   backendMode = backend ? 'firebase' : 'local';
 
   if(backendMode==='firebase'){
-    // อ่านสินค้าสาธารณะแบบเรียลไทม์ (ทุกคนเห็น — ไม่มีต้นทุน)
-    unsubProducts = backend.subscribeProducts(arr=>{
-      firstSnap = true;
-      pubMap = new Map(arr.map(p=>[p.id,p]));
-      rebuildFromFirebase();
-      render();
-    });
-    // ฟังสถานะล็อกอินเจ้าของ
-    backend.onAuth(onAuthChanged);
+    backend.onAuth(onAuthChanged); // การฟังสินค้าทั้งคอลเลกชันทำใน ensureProductsSub() ตอนเปิดหน้าร้าน
   }else{
     products = loadLocal();
     await loadCatalog();
