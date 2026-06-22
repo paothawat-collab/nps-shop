@@ -519,6 +519,8 @@ let pubMap = new Map();          // โหมด firebase: id -> สินค้
 let costMap = new Map();         // โหมด firebase: id -> cost (เฉพาะตอนล็อกอิน)
 let authedUser = null;           // ผู้ใช้ Firebase ที่ล็อกอินอยู่
 let unsubProducts=null, unsubCosts=null;
+let gridLimit = 12;     // ลูกค้าโหลดทีละ 12 ชิ้น (เร็ว) — กด "ดูเพิ่ม" เพื่อโหลดต่อ
+let subbedLimit = -1;   // จำนวนที่ subscribe อยู่ตอนนี้ (กัน re-subscribe ซ้ำ)
 let firstSnap = false;           // โหมด firebase: ได้ snapshot แรกแล้วหรือยัง
 
 let ownerMode = false;
@@ -608,16 +610,27 @@ async function restGet(id, fields){
 }
 
 /* เริ่มฟังสินค้าทั้งคอลเลกชันเฉพาะตอนเปิดหน้าร้าน/กริด (ไม่ทำตอนสแกน QR ดูชิ้นเดียว) */
+/* จำนวนที่ควรโหลด: เจ้าของ/กำลังค้นหา = ทั้งหมด (0), ลูกค้าทั่วไป = ทีละ gridLimit */
+function desiredLimit(){
+  if(ownerMode) return 0;
+  if($('#search') && $('#search').value.trim()) return 0;
+  return gridLimit;
+}
 function ensureProductsSub(){
-  if(backendMode!=='firebase' || unsubProducts || !backend) return;
-  firstSnap=false;
+  if(backendMode!=='firebase' || !backend) return;
+  const lim = desiredLimit();
+  if(unsubProducts && subbedLimit===lim) return;   // ตรงกับที่ subscribe อยู่แล้ว
+  if(unsubProducts){ unsubProducts(); unsubProducts=null; }
+  subbedLimit = lim; firstSnap=false;
   unsubProducts = backend.subscribeProducts(arr=>{
     firstSnap=true;
     pubMap=new Map(arr.map(p=>[p.id,p]));
     rebuildFromFirebase();
     render();
-  });
+  }, lim);
 }
+/* ปุ่ม "ดูสินค้าเพิ่ม" */
+window.loadMore = ()=>{ gridLimit += 12; render(); };
 
 /* ---------- โหมด firebase: รวมข้อมูลสาธารณะ + ต้นทุน เป็นรายการเจ้าของ ---------- */
 function rebuildFromFirebase(){
@@ -720,11 +733,17 @@ function renderOwner(){
 
 function renderFront(){
   const term=$('#search').value.trim().toLowerCase();
-  const data=publicData().filter(p=>p.name.toLowerCase().includes(term));
+  let data=publicData().filter(p=>p.name.toLowerCase().includes(term));
   const main=$('#list');
   if(!data.length){
     if(backendMode==='firebase' && !firstSnap){ main.innerHTML = emptyHtml('กำลังเชื่อมต่อ…','กำลังโหลดสินค้าจากระบบ'); return; }
     main.innerHTML = emptyHtml('ยังไม่มีสินค้า', backendMode==='firebase'?'เจ้าของร้านยังไม่ได้เพิ่มสินค้า':'เจ้าของร้านยังไม่ได้เพิ่ม/เผยแพร่สินค้า'); return;
+  }
+  // โหลดทีละหน้า (เฉพาะลูกค้า ตอนไม่ได้ค้นหา) เพื่อให้เปิดร้านเร็ว
+  let more=false;
+  if(!term){
+    if(backendMode==='firebase'){ more = pubMap.size>=gridLimit; }
+    else if(data.length>gridLimit){ more=true; data=data.slice(0,gridLimit); }
   }
   main.innerHTML = `<div class="grid">${data.map(p=>{
     const imgs=imagesOf(p),cover=imgs[0];
@@ -737,7 +756,8 @@ function renderFront(){
       ${hasDiscount(p)?`<span class="disc-badge" style="position:absolute;top:8px;left:8px">${esc(discountText(p))}</span>`:''}
       <div class="pinfo"><p class="pname">${esc(p.name)}</p>${priceHtml}${statusChip(p)}</div>
     </div>`;
-  }).join('')}</div>`;
+  }).join('')}</div>`
+    + (more?`<button class="btn secondary" style="display:block;margin:18px auto 0;max-width:280px" onclick="loadMore()">ดูสินค้าเพิ่ม</button>`:'');
 }
 
 /* วาดหน้าสินค้าเดี่ยว (ใช้ซ้ำได้ — เรียกตอนได้ข้อความก่อน แล้วเรียกอีกทีตอนได้รูป) */
@@ -1188,8 +1208,10 @@ function registerSW(){
 
     const backend = {
       mode:'firebase',
-      subscribeProducts(cb){
-        return fs.onSnapshot(fs.collection(db,'products'), snap=>{
+      subscribeProducts(cb, max){
+        let q = fs.collection(db,'products');
+        if(max && max>0) q = fs.query(q, fs.orderBy('createdAt','desc'), fs.limit(max));
+        return fs.onSnapshot(q, snap=>{
           const arr=[]; snap.forEach(d=> arr.push({ id:d.id, ...d.data() })); cb(arr);
         }, err=> console.warn('[NPS] products snapshot:', err));
       },
