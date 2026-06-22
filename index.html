@@ -629,8 +629,20 @@ function ensureProductsSub(){
     render();
   }, lim);
 }
-/* ปุ่ม "ดูสินค้าเพิ่ม" */
-window.loadMore = ()=>{ gridLimit += 12; render(); };
+/* โหลดสินค้าต่อเองอัตโนมัติ — โชว์ 12 ชิ้นแรกก่อน แล้วทยอยโหลดที่เหลือเบื้องหลังทีละ 12 (ไม่ต้องกดปุ่ม) */
+let autoLoadTimer = null;
+function scheduleAutoLoad(){
+  if(autoLoadTimer || ownerMode) return;
+  if($('#search') && $('#search').value.trim()) return;          // กำลังค้นหา → โหลดทั้งหมดอยู่แล้ว
+  const hasMore = backendMode==='firebase' ? (pubMap.size>=gridLimit) : (products.length>gridLimit);
+  if(!hasMore) return;
+  autoLoadTimer = setTimeout(()=>{
+    autoLoadTimer = null;
+    gridLimit += 12;
+    if(backendMode==='firebase') ensureProductsSub();             // re-subscribe limit ใหม่ (ยังเรียลไทม์)
+    render();
+  }, 400);
+}
 
 /* ---------- โหมด firebase: รวมข้อมูลสาธารณะ + ต้นทุน เป็นรายการเจ้าของ ---------- */
 function rebuildFromFirebase(){
@@ -757,7 +769,8 @@ function renderFront(){
       <div class="pinfo"><p class="pname">${esc(p.name)}</p>${priceHtml}${statusChip(p)}</div>
     </div>`;
   }).join('')}</div>`
-    + (more?`<button class="btn secondary" style="display:block;margin:18px auto 0;max-width:280px" onclick="loadMore()">ดูสินค้าเพิ่ม</button>`:'');
+    + (more?`<div style="text-align:center;color:var(--muted);font-size:.82rem;padding:16px 0">กำลังโหลดสินค้าเพิ่ม…</div>`:'');
+  if(more) scheduleAutoLoad();
 }
 
 /* วาดหน้าสินค้าเดี่ยว (ใช้ซ้ำได้ — เรียกตอนได้ข้อความก่อน แล้วเรียกอีกทีตอนได้รูป) */
