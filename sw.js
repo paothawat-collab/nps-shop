@@ -5,7 +5,7 @@
    • เปลี่ยนเลข CACHE_VERSION ทุกครั้งที่อัปเดตไฟล์ เพื่อให้เครื่องลูกค้าโหลดของใหม่
    ========================================================= */
 
-const CACHE_VERSION = 'nps-v4';
+const CACHE_VERSION = 'nps-v5';
 const APP_SHELL = [
   './',
   './index.html',
