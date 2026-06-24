@@ -1035,8 +1035,16 @@ function drawPriceTag(canvas, p){
 let _tagCanvas=null, _tagFontReady=false;
 async function ensureTagFont(){
   if(_tagFontReady) return;
-  try{ if(document.fonts){ await Promise.all([
-    document.fonts.load('600 46px Sarabun'), document.fonts.load('800 96px Sarabun'), document.fonts.load('700 60px Sarabun') ]); } }catch(e){}
+  try{ if(document.fonts){
+    // โหลดฟอนต์ Sarabun (พร้อมอักษรไทยตัวอย่าง) ให้เสร็จก่อน เพื่อให้วัดความกว้าง/ย่อชื่อได้ตรง
+    await Promise.all([
+      document.fonts.load('600 46px Sarabun','กข0'),
+      document.fonts.load('800 96px Sarabun','กข0'),
+      document.fonts.load('700 62px Sarabun','กข0'),
+      document.fonts.load('500 30px Sarabun','กข0')
+    ]);
+    await document.fonts.ready;
+  } }catch(e){}
   _tagFontReady=true;
 }
 window.showPriceTag = async id => {
