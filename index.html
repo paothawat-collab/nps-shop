@@ -983,52 +983,53 @@ window.showQr=id=>{
 /* ========================= ป้ายราคา (วาดเป็นรูป + บันทึก) ========================= */
 const TAG_FONT = 'Sarabun, "IBM Plex Sans Thai", sans-serif';
 const _num = n => String(Math.round(Number(n)||0)); // ไม่ใส่จุลภาค ให้ตรงรูปแบบไฟล์ Word
-/* วาดป้ายราคา 1 ใบ ลงบน canvas ตามรูปแบบเดียวกับไฟล์ Word */
+/* วาดป้ายราคา 1 ใบ — สูงพอดีเนื้อหา เว้นขอบบน-ล่างเท่ากัน (เนื้อหาอยู่กลางป้าย) */
 function drawPriceTag(canvas, p){
-  const W=560, H=720, DPR=2;
+  const W=560, DPR=2, PAD_X=36, PAD_Y=58;
+  const RED='#FF0000', INK='#211e19', GREY='#555';
+  const maxW=W-PAD_X*2;
+  const m=canvas.getContext('2d'); // ใช้วัดขนาดก่อน
+  const fit=(text,size,weight)=>{let s=size;m.font=`${weight} ${s}px ${TAG_FONT}`;
+    while(m.measureText(text).width>maxW && s>12){s--;m.font=`${weight} ${s}px ${TAG_FONT}`;}return s;};
+  const code=(p.code||'').trim();
+  const disc=hasDiscount(p), full=_num(p.price)+'.-', sale=_num(finalPriceOf(p))+'.-';
+  const discTxt = p.discountType==='percent' ? `${Number(p.discount)||0}%` : `ลด ${_num(p.discount)}.-`;
+
+  // จัดบรรทัด: gap = ระยะห่างเหนือบรรทัดนี้
+  const lines=[{kind:'name',text:p.name,size:fit(p.name,46,'600'),weight:'600',color:INK,gap:0}];
+  if(code) lines.push({kind:'code',label:'รหัสสินค้า ',value:code,size:30,weight:'500',color:INK,gap:16});
+  if(disc){
+    lines.push({kind:'t',text:discTxt,size:fit(discTxt,98,'800'),weight:'800',color:RED,gap:30});
+    lines.push({kind:'t',text:full,size:fit(full,46,'500'),weight:'500',color:GREY,strike:true,gap:22});
+    lines.push({kind:'t',text:sale,size:fit(sale,62,'700'),weight:'700',color:RED,gap:14});
+  } else {
+    lines.push({kind:'t',text:full,size:fit(full,96,'700'),weight:'700',color:RED,gap:34});
+  }
+  const content=lines.reduce((s,l)=>s+l.size+l.gap,0);
+  const H=Math.round(PAD_Y*2+content);
+
   canvas.width=W*DPR; canvas.height=H*DPR;
   const ctx=canvas.getContext('2d'); ctx.setTransform(DPR,0,0,DPR,0,0);
   ctx.fillStyle='#ffffff'; ctx.fillRect(0,0,W,H);
-  // ขอบประ
-  ctx.strokeStyle='#9a9a9a'; ctx.lineWidth=2; ctx.setLineDash([3,5]);
-  ctx.strokeRect(12,12,W-24,H-24); ctx.setLineDash([]);
-  ctx.textAlign='center'; ctx.textBaseline='alphabetic';
-  const cx=W/2, maxW=W-70, RED='#FF0000', INK='#211e19';
-  const fit=(text,size,weight='400')=>{let s=size;ctx.font=`${weight} ${s}px ${TAG_FONT}`;
-    while(ctx.measureText(text).width>maxW && s>12){s--;ctx.font=`${weight} ${s}px ${TAG_FONT}`;}return s;};
-  const code=(p.code||'').trim();
-  const disc=hasDiscount(p), full=Number(p.price)||0, sale=finalPriceOf(p);
-  const discTxt = p.discountType==='percent' ? `${Number(p.discount)||0}%` : `ลด ${_num(p.discount)}.-`;
-  let y=95;
-  // ชื่อสินค้า
-  ctx.fillStyle=INK; const ns=fit(p.name,46,'600'); ctx.font=`600 ${ns}px ${TAG_FONT}`;
-  ctx.fillText(p.name, cx, y); y+=46;
-  // รหัสสินค้า (ขีดเส้นใต้รหัส)
-  if(code){
-    const cs=30; ctx.fillStyle=INK; ctx.font=`500 ${cs}px ${TAG_FONT}`;
-    const label='รหัสสินค้า ', lw=ctx.measureText(label).width, cw=ctx.measureText(code).width;
-    const sx=cx-(lw+cw)/2; ctx.textAlign='left';
-    ctx.fillText(label, sx, y); ctx.fillText(code, sx+lw, y);
-    ctx.strokeStyle=INK; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(sx+lw,y+5); ctx.lineTo(sx+lw+cw,y+5); ctx.stroke();
-    ctx.textAlign='center'; y+=20;
-  }
-  if(disc){
-    // %ส่วนลด ตัวแดงใหญ่หนา
-    y+=80; ctx.fillStyle=RED; const ds=fit(discTxt,96,'800'); ctx.font=`800 ${ds}px ${TAG_FONT}`;
-    ctx.fillText(discTxt, cx, y); y+=70;
-    // ราคาเต็ม ขีดฆ่า
-    ctx.fillStyle='#555'; const fs=fit(_num(full)+'.-',46,'500'); ctx.font=`500 ${fs}px ${TAG_FONT}`;
-    const ft=_num(full)+'.-'; ctx.fillText(ft, cx, y);
-    const fw=ctx.measureText(ft).width; ctx.strokeStyle='#555'; ctx.lineWidth=2.5;
-    ctx.beginPath(); ctx.moveTo(cx-fw/2-4, y-14); ctx.lineTo(cx+fw/2+4, y-14); ctx.stroke();
-    y+=66;
-    // ราคาขาย ตัวแดง
-    ctx.fillStyle=RED; const ss=fit(_num(sale)+'.-',60,'700'); ctx.font=`700 ${ss}px ${TAG_FONT}`;
-    ctx.fillText(_num(sale)+'.-', cx, y);
-  } else {
-    // ไม่มีส่วนลด → โชว์ราคาเดียว ตัวแดงใหญ่
-    y+=120; ctx.fillStyle=RED; const ps=fit(_num(full)+'.-',92,'700'); ctx.font=`700 ${ps}px ${TAG_FONT}`;
-    ctx.fillText(_num(full)+'.-', cx, y);
+  ctx.strokeStyle='#9a9a9a'; ctx.lineWidth=2; ctx.setLineDash([3,5]); ctx.strokeRect(12,12,W-24,H-24); ctx.setLineDash([]);
+  ctx.textBaseline='alphabetic'; const cx=W/2;
+  let y=PAD_Y;
+  for(const l of lines){
+    y += l.gap;
+    const base = y + l.size*0.76;          // baseline ของบรรทัด
+    ctx.fillStyle=l.color; ctx.font=`${l.weight} ${l.size}px ${TAG_FONT}`;
+    if(l.kind==='code'){
+      const labW=ctx.measureText(l.label).width, cw=ctx.measureText(l.value).width;
+      const sx=cx-(labW+cw)/2; ctx.textAlign='left';
+      ctx.fillText(l.label,sx,base); ctx.fillText(l.value,sx+labW,base);
+      ctx.strokeStyle=l.color; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(sx+labW,base+5); ctx.lineTo(sx+labW+cw,base+5); ctx.stroke();
+      ctx.textAlign='center';
+    } else {
+      ctx.textAlign='center'; ctx.fillText(l.text,cx,base);
+      if(l.strike){ const w=ctx.measureText(l.text).width; ctx.strokeStyle=l.color; ctx.lineWidth=2.5;
+        ctx.beginPath(); ctx.moveTo(cx-w/2-4,base-l.size*0.28); ctx.lineTo(cx+w/2+4,base-l.size*0.28); ctx.stroke(); }
+    }
+    y += l.size;
   }
 }
 let _tagCanvas=null, _tagFontReady=false;
